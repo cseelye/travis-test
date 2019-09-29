@@ -1,0 +1,44 @@
+language: minimal
+sudo: required
+services:
+  - docker
+env:
+  global:
+  - REPO_NAME=cseelye
+  - IMAGE_NAME="$(cat .image-name)"
+  - IMAGE_TAG=latest
+  - IMAGE_BUILD_DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+  - IMAGE_VERSION="$(cat .image-version).$TRAVIS_BUILD_NUMBER"
+  - IMAGE_VCS_REF=$TRAVIS_COMMIT
+  - secure: pIJbmmGXPLfNl69iy6WyF3XK5NIs37TcJhnLXqzJiXdl2CagfevtIqQEPVsCCwbk+Pbk0xpjP17heIzOYDDwbd+ftr6EeF6QhFL/+3ov2em0qKNCuL86Fg3WGSKGckZNhoBXtSPvYlFQriBpQe/yTVbVZ3Xs3NTdNEru9BgVU7cPQFUgHn/N8DV6TZDJj3wIvH3hYszRjNjKObCS7BYvHe+ZZBfm77VuX65CIxRLDTtYgh1ySAcysIXeCEb5vB1SN44+hNmTwdlJd8TL9zyaS4PQPyg5RjJvq+YpskhisAwTWZnPlkz6Du/2f/YLrrxwUUQKDrw7DiXMxepzbw9Kz2VM9mmRvk8uOYnb9Y+LvFegh0ROU553DMJm+S8iWo0Irybmg6YHGNi6WxP/3ruwnbReS6oBo16UXd6WZRLxZwXkc9GouyAJMuRg0CubLF2EXDNcUH2uiL9tYj0USZeraqQlyF9kWZxEBlRLDn4OYsZhwJSuS3pcp7MLTQSKhrs3Y9n0fc3j20pnbhpDHLZVCfeyRMBCpMShITdCmAtb47tDsRLyOExpjn20HN1u9A2h5Ng2f3JJSb2f4rXk1YBou0npH2h8bmcyhUUfRGRUaA23Laflo76pvG3NVGmDWYEpXAn0j+p2tYUQ+euRDxa6CRq17xeLDrEp6FrPRy0W5Zk=
+  - secure: fhwlsyjxZFoqo1KSHwxdHcr2lmGC0mknOkyMJmbTqGAlRCsfZwx+buwgokxP0Xk3LSt4W4Ek/XTyHK9xCyNB7tvT7LBySH/sLGBAss+lawOOs8lg+UnZZ8oCGQj8nMPsh2HX3dzz2gCQkxqs3L9MIZChcaZS26mE0M6F+nUNIg7VsrY3zpdc6P2sbdLXX243Xh1Fi9zMAadGZ1Xr4iuXkrjeP17sAEDrGMGr/APHPFDFL1F3aZQyfODXhnUmcbfyOyGZ5BD+Xd/6bmUkuaEeoIunEsF6VSViNE+LVtee4ynDFbs7/i7bgMRRuAx4U0r1dBrE7PpfEut1Pbu31sNX/MbZ+vfavIUv/XhgcRhWhwuCk+n6gYkHmEfc2fV8CzGNmVwYYDizKa5l2jqegHh3mUeDt3eaLXrdnwuobid+KCGL/THxy0/CEpkl3fCKPTCTU6jNyLMjnw8ELuuTR3OS+EqwaTbONZT4JrOjpfg6E3N8Wyj6DZTY/JFW4Bt94t4YSTyeEBHtF/YVvxnRXctcTkWzvGgBZb7DqJnYi2Mbuo1Xkje4NZPnNTJdCRQM/dPGTfca0Mb9dTJM3qftB1+f8ia4VlhAEcokJGEmwqy2N/GECVQuqTSlM3MEaKr9ZEV7qj3Xl3Z5+9miXuJwrc11Hv2d7wcfRHIQOstrz8N4MVA=
+jobs:
+  include:
+  - stage: build
+    name: "Build container image"
+    env:
+    - DOCKERFILE_NAME=Dockerfile
+    before_script: docker pull $REPO_NAME/$IMAGE_NAME:$IMAGE_TAG || true
+    script: docker build
+            --build-arg VCS_REF=$IMAGE_VCS_REF
+            --build-arg BUILD_DATE=$IMAGE_BUILD_DATE
+            --build-arg VERSION=$IMAGE_VERSION
+            --build-arg IMAGE_NAME=$IMAGE_NAME
+            --cache-from $REPO_NAME/$IMAGE_NAME:$IMAGE_TAG
+            --tag $REPO_NAME/$IMAGE_NAME:$IMAGE_TAG
+            --file $DOCKERFILE_NAME
+            .
+  - stage: test
+    name: "Test container image"
+    before_script: docker pull $REPO_NAME/$IMAGE_NAME:$IMAGE_TAG || true
+    script: docker run --rm --volume $(pwd)/test-monitor.ini:/monitor/monitor.ini --volume $(pwd)/test-monitors.ini:/monitor/monitors.ini $REPO_NAME/$IMAGE_NAME:$IMAGE_TAG --log-level=debug --test &&
+            docker run --rm --volume $(pwd)/test-monitor.ini:/monitor/monitor.ini --volume $(pwd)/test-monitors.ini:/monitor/monitors.ini $REPO_NAME/$IMAGE_NAME:$IMAGE_TAG --log-level=debug --one-shot
+  - stage: deploy
+    name: "Deploy to docker hub"
+    script: echo "$DOCKER_HUB_PASSWORD" | docker login --username "$DOCKER_HUB_USERNAME" --password-stdin &&
+            docker push $REPO_NAME/$IMAGE_NAME:$IMAGE_TAG
+stages:
+  - build
+  - test
+  - deploy
+
