@@ -23,4 +23,4 @@ jobs:
               --volume $(pwd):/work 
               --workdir /work 
               $REPO_NAME/$IMAGE_NAME:$IMAGE_TAG
-              make test
+              make lint test
