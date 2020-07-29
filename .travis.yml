@@ -5,6 +5,7 @@ env:
     - REPO_NAME=cseelye
     - IMAGE_NAME=tool-dev
     - IMAGE_TAG=latest
+dist: bionic
 jobs:
   include:
     - stage: "build container"
@@ -19,5 +20,5 @@ jobs:
     - stage: "test container"
       script: docker container run --rm -v $(pwd):/work --workdir /work $REPO_NAME/$IMAGE_NAME:$IMAGE_TAG make test
 stages:
-  "build container"
-  "test container"
+  - "build container"
+  - "test container"
