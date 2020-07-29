@@ -1,3 +1,4 @@
+language: minimal
 services:
   - docker
 env:
@@ -8,17 +9,18 @@ env:
 dist: bionic
 jobs:
   include:
-    - stage: "build container"
+    - stage: "build and test container"
       env:
         DOCKERFILE_NAME=Dockerfile
       before_script: docker pull $REPO_NAME/$IMAGE_NAME:$IMAGE_TAG || true
-      script: docker image build
+      script:
+        - docker image build
               --cache-from $REPO_NAME/$IMAGE_NAME:$IMAGE_TAG
               --tag $REPO_NAME/$IMAGE_NAME:$IMAGE_TAG
               --file $DOCKERFILE_NAME
               .
-    - stage: "test container"
-      script: docker container run --rm -v $(pwd):/work --workdir /work $REPO_NAME/$IMAGE_NAME:$IMAGE_TAG make test
-stages:
-  - "build container"
-  - "test container"
+        - docker container run --rm 
+              --volume $(pwd):/work 
+              --workdir /work 
+              $REPO_NAME/$IMAGE_NAME:$IMAGE_TAG
+              make test
