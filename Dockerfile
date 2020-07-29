@@ -1,34 +1,35 @@
-FROM alpine:3.10
+FROM python:3.8-buster as base
 
+FROM base as builder
+RUN mkdir /install
+WORKDIR /install
+COPY requirements.txt /tmp/requirements.txt
+RUN pip install --install-option="--prefix=/install" -r /tmp/requirements.txt
+
+FROM base as prod
 ARG VCS_REF=unknown
 ARG BUILD_DATE=unknown
 ARG VERSION=0.0
-ARG IMAGE_NAME=simplemonitor
 LABEL maintainer="cseelye@gmail.com" \
-      org.label-schema.build-date=$BUILD_DATE \
-      org.label-schema.description="Container for SimpleMonitor" \
-      org.label-schema.docker.cmd="docker run --detach --volume /abspath/mymainconfig.ini:/monitor/monitor.ini --volume /abspath/mymonitorconfig.ini:/monitor/monitors.ini cseelye/simplemonitor" \
-      org.label-schema.name=$IMAGE_NAME \
-      org.label-schema.url="https://github.com/jamesoff/simplemonitor" \
-      org.label-schema.vcs-url="https://github.com/cseelye/simplemonitor-container" \
-      org.label-schema.vcs-ref=$VCS_REF \
-      org.label-schema.version=$VERSION \
-      org.label-schema.schema-version="1.0"
+      org.opencontainers.image.authors="cseelye@gmail.com" \
+      org.opencontainers.image.url="https://github.com/cseelye/pydevbase" \
+      org.opencontainers.image.title="pydevbase" \
+      org.opencontainers.image.description="Sample docker image/makefile/CICD" \
+      org.opencontainers.image.revision="$VCS_REF" \
+      org.opencontainers.image.created="$BUILD_DATE" \
+      org.opencontainers.image.version="$VERSION"
 
-RUN apk update && \
-    apk add \
-        bind-tools \
-        curl \
-        iputils \
-        python3 \
-        py3-cryptography \
-        tar && \
-    curl -L https://bootstrap.pypa.io/get-pip.py | python3 && \
-    mkdir -p /monitor && \
-    curl -L https://github.com/jamesoff/simplemonitor/tarball/master | tar --strip-components 1 -xzC /monitor && \
-    cd /monitor && \
-    pip install -r requirements.txt
+ENV TERM=xterm-color
+ENV PYTHONUNBUFFERED=1
 
-WORKDIR /monitor
-ENTRYPOINT ["python3", "monitor.py"]
+COPY --from=builder /install /usr/local
+COPY tool /tool
 
+WORKDIR /tool
+ENTRYPOINT ["standalone.py"]
+
+FROM prod as dev
+COPY requirements.txt /tmp/requirements.txt
+COPY requirements_dev.txt /tmp/requirements_dev.txt
+RUN pip install -r /tmp/requirements_dev.txt
+ENTRYPOINT []

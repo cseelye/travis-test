@@ -1,0 +1,6 @@
+# Import all of the prod requirements
+-r requirements.txt
+pylint
+pytest
+pytest-cov
+coverage
